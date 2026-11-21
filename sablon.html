@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Almanca Defteri</title>
+<style>
+:root {
+  --bg: #f6f4ef; --panel: #ffffff; --ink: #1d1d1b; --soft: #6b6a66;
+  --line: #e4e1d8; --accent: #b4441f; --tag: #f1e6d9; --warn: #8a5a00; --warn-bg: #fbefd2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161614; --panel: #1f1f1c; --ink: #ecebe6; --soft: #9c9a93;
+    --line: #34332e; --accent: #e8794f; --tag: #2e2a24; --warn: #f0c46a; --warn-bg: #3a2f17;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.55 "Inter", system-ui, sans-serif; }
+header { padding: 28px 24px 8px; max-width: 980px; margin: 0 auto; }
+h1 { margin: 0; font-size: 26px; letter-spacing: -.01em; }
+h1 span { color: var(--accent); }
+.ozet { color: var(--soft); margin-top: 4px; }
+nav { display: flex; gap: 6px; flex-wrap: wrap; padding: 14px 24px; max-width: 980px; margin: 0 auto; }
+nav button { border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  padding: 7px 14px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 14px; }
+nav button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+main { max-width: 980px; margin: 0 auto; padding: 0 24px 60px; }
+input[type=search] { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink); font: inherit; margin-bottom: 18px; }
+h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--soft); margin: 26px 0 10px; }
+.madde { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 8px; display: flex; gap: 12px; align-items: baseline; }
+.madde .konu { flex: 1; }
+.madde .tarih { color: var(--soft); font-size: 13px; white-space: nowrap; }
+.rozet { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--tag); white-space: nowrap; }
+.rozet.cok { background: var(--accent); color: #fff; }
+.not { display: inline-block; margin-top: 4px; font-size: 13px; color: var(--warn);
+  background: var(--warn-bg); padding: 1px 8px; border-radius: 6px; }
+.oturum { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; }
+.oturum summary { padding: 14px 16px; cursor: pointer; font-weight: 600; }
+.oturum .icerik { padding: 0 18px 14px; }
+.oturum h3 { font-size: 16px; margin: 16px 0 6px; color: var(--accent); }
+.oturum ul { margin: 0; padding-left: 20px; }
+.acik label { display: flex; gap: 10px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
+.bos { color: var(--soft); padding: 20px 0; }
+@media (max-width: 560px) { .madde { flex-wrap: wrap; } header, nav, main { padding-left: 16px; padding-right: 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Almanca <span>Defteri</span></h1>
+  <div class="ozet" id="ozet"></div>
+</header>
+<nav id="sekmeler"></nav>
+<main>
+  <input type="search" id="ara" placeholder="Ara… (ör. Passiv, begegnen)">
+  <div id="alan"></div>
+</main>
+<script>
+const VERI = /*VERI*/null;
+const SEKMELER = ["Konular", "Oturumlar", "Açık işler"];
+let sekme = "Konular";
+try { sekme = localStorage.getItem("sekme") || sekme; } catch (e) {}
+
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const satirIci = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\*(.+?)\*/g, "<i>$1</i>");
+
+function mdHtml(md) {
+  let html = "", liste = false;
+  for (const satir of md.split("\n")) {
+    if (satir.startsWith("# ")) continue;
+    if (satir.startsWith("- ")) {
+      if (!liste) { html += "<ul>"; liste = true; }
+      html += "<li>" + satirIci(satir.slice(2)) + "</li>";
+      continue;
+    }
+    if (liste) { html += "</ul>"; liste = false; }
+    if (satir.startsWith("## ")) html += "<h3>" + satirIci(satir.slice(3)) + "</h3>";
+    else if (satir.trim()) html += "<p>" + satirIci(satir) + "</p>";
+  }
+  return html + (liste ? "</ul>" : "");
+}
+
+function ozet() {
+  const n = VERI.bolumler.reduce((a, b) => a + b.maddeler.length, 0);
+  const acik = VERI.acik.filter(a => !a.bitti).length;
+  document.getElementById("ozet").textContent =
+    `${n} konu · ${VERI.oturumlar.length} oturum · ${acik} açık iş`;
+}
+
+function sekmeleriCiz() {
+  const nav = document.getElementById("sekmeler");
+  nav.innerHTML = "";
+  for (const ad of SEKMELER) {
+    const b = document.createElement("button");
+    b.textContent = ad;
+    b.className = ad === sekme ? "on" : "";
+    b.onclick = () => { sekme = ad; try { localStorage.setItem("sekme", ad); } catch (e) {} ciz(); };
+    nav.appendChild(b);
+  }
+}
+
+function ciz() {
+  sekmeleriCiz();
+  const q = document.getElementById("ara").value.trim().toLowerCase();
+  const alan = document.getElementById("alan");
+  let html = "";
+  if (sekme === "Konular") {
+    for (const b of VERI.bolumler) {
+      const m = b.maddeler.filter(x => !q || (x.konu + " " + x.not).toLowerCase().includes(q));
+      if (!m.length) continue;
+      html += `<h2>${esc(b.ad)} · ${m.length}</h2>`;
+      for (const x of m) {
+        html += `<div class="madde"><div class="konu">${satirIci(x.konu)}` +
+          (x.not ? `<br><span class="not">${esc(x.not)}</span>` : "") + `</div>` +
+          `<span class="tarih">${esc(x.tarih)}</span>` +
+          `<span class="rozet ${x.tekrar > 1 ? "cok" : ""}">${x.tekrar}×</span></div>`;
+      }
+    }
+  } else if (sekme === "Oturumlar") {
+    VERI.oturumlar.filter(o => !q || o.md.toLowerCase().includes(q)).forEach((o, i) => {
+      html += `<details class="oturum" ${i === 0 ? "open" : ""}><summary>${esc(o.tarih)}</summary>` +
+        `<div class="icerik">${mdHtml(o.md)}</div></details>`;
+    });
+  } else {
+    const a = VERI.acik.filter(x => !q || x.metin.toLowerCase().includes(q));
+    html += '<div class="acik">' + a.map(x =>
+      `<label><input type="checkbox" disabled ${x.bitti ? "checked" : ""}> ${satirIci(x.metin)}</label>`).join("") + "</div>";
+  }
+  alan.innerHTML = html || '<div class="bos">Sonuç yok.</div>';
+}
+
+document.getElementById("ara").addEventListener("input", ciz);
+ozet();
+ciz();
+</script>
+</body>
+</html>
